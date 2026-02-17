@@ -1,0 +1,11 @@
+modules = ["nodejs-with-prybar-18", "replit-rtld-loader", "postgresql-16", "nodejs-19", "nodejs-20", "nodejs-23", "nodejs-16", "nodejs-14"]
+run = "npm start"
+[nix]
+channel = "stable-24_05"
+
+[deployment]
+run = ["sh", "-c", "npm start"]
+
+[[ports]]
+localPort = 8000
+externalPort = 80
