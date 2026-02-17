@@ -34,13 +34,13 @@ const {
   updateuserdataSessionedValidators,
 } = require("../validators/authValidators");
 
-router.route("/login").post(LoginValidators, login);
+router.route("/login").post(LoginValidators ,login);
 router.route("/user/department").get(getuserDepartment);
 
 router.route("/user").get(getuserValidators, getuser);
 
 router.route("/add-email").post(addEmail);
-router.route("/verify-otp").post(verifyOTP);
+router.route("/verifydevice-otp").post(verifyOTP);
 
 // router.route("/signup").post(upload.single("profileImage"), signUpValidators, signUp);
 router.route("/user/BranchOP").get( getuserBranchOP);

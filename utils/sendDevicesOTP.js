@@ -5,15 +5,21 @@ const nodemailer = require("nodemailer");
  * @param {string} toEmail - recipient email
  * @param {string | number} code - verification code
  */
-async function sendOTPConfirmEmail(toEmail, code,title,subtitle) {
+async function sendOTPDConfirmEmail(toEmail, code, title, subtitle) {
   try {
-    // 1️⃣ إعداد transporter
+    // 1️⃣ إعداد transporter باستخدام IPv4 و port 587
     const transporter = nodemailer.createTransport({
-      service: "Gmail",
+      host: "smtp.gmail.com",
+      port: 587,
+      secure: false, // TLS
       auth: {
-        user: process.env.EMAIL_USER, // بريدك
+        user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS, // App Password لو Gmail فيه 2FA
       },
+      tls: {
+        rejectUnauthorized: false,
+      },
+      family: 4, // ⬅️ يجبر استخدام IPv4
     });
 
     // 2️⃣ إعداد خيارات البريد
@@ -30,51 +36,12 @@ async function sendOTPConfirmEmail(toEmail, code,title,subtitle) {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Email Verification</title>
         <style>
-          body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f6f8;
-            color: #333;
-            margin: 0;
-            padding: 0;
-          }
-          .container {
-            max-width: 500px;
-            margin: 30px auto;
-            background: #fff;
-            border-radius: 8px;
-            padding: 30px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-            text-align: center;
-          }
-          .logo {
-            height: 50px;
-            margin-bottom: 20px;
-          }
-          h2 {
-            color: #28a745;
-            margin-bottom: 20px;
-          }
-          .code {
-            font-size: 32px;
-            font-weight: bold;
-            color: #28a745;
-            padding: 15px 20px;
-            background: #eafaf1;
-            border-radius: 6px;
-            border: 1px solid #c1e7c9;
-            display: inline-block;
-            margin-bottom: 20px;
-          }
-          p {
-            font-size: 14px;
-            color: #555;
-            line-height: 1.6;
-          }
-          .footer {
-            font-size: 12px;
-            color: #999;
-            margin-top: 30px;
-          }
+          body { font-family: Arial, sans-serif; background-color: #f4f6f8; color: #333; margin: 0; padding: 0; }
+          .container { max-width: 500px; margin: 30px auto; background: #fff; border-radius: 8px; padding: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); text-align: center; }
+          h2 { color: #28a745; margin-bottom: 20px; }
+          .code { font-size: 32px; font-weight: bold; color: #28a745; padding: 15px 20px; background: #eafaf1; border-radius: 6px; border: 1px solid #c1e7c9; display: inline-block; margin-bottom: 20px; }
+          p { font-size: 14px; color: #555; line-height: 1.6; }
+          .footer { font-size: 12px; color: #999; margin-top: 30px; }
         </style>
       </head>
       <body>
@@ -102,6 +69,4 @@ async function sendOTPConfirmEmail(toEmail, code,title,subtitle) {
   }
 }
 
-// sendOTPConfirmEmail("user@example.com", 123456);
-
-module.exports = sendOTPConfirmEmail;
+module.exports = sendOTPDConfirmEmail;

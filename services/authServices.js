@@ -11,34 +11,66 @@ const {FailedLoginModel} = require("../models/failedLoginModel");
 const levelModel=require("../models/levelModel")
 
 const sendOTPConfirmEmail =require("../utils/sendOTPEmail")
+const sendOTPDConfirmEmail =require("../utils/sendDevicesOTP")
 
+//login
+// exports.login = asyncHandler(async (req, res, next) => {
+//   const { password ,Appversion} = req.body;
 
-//login 
+//   const userdata = await UserModel.findOne({ password });
+//   if (userdata) {
+//     const returnpassword = userdata.password;
+
+//     const userIdcreated = await userdata._id;
+
+//     // const isMatch = await bcrypt.compare(password, returnpassword);
+//     const isMatch = password == returnpassword ? true : false;
+//     if (isMatch) {
+//       const token = await createToken(userIdcreated);
+//       if (userdata.isVerified === true) {
+//         await UserModel.findByIdAndUpdate(
+//           { _id: userdata._id },
+//           { lastLogin: Date.now(),Appversion:Appversion },
+//           { new: true },
+//         );
+//         res.status(200).json({
+//           message: "Login successfully !",
+//           data: userdata,
+//           status: 200,
+//           token: token,
+//         });
+//       } else {
+//         return next(new ApiErrors(`your Account is Not Active !`, 401));
+//       }
+//     } else {
+//       return next(new ApiErrors(`The password is not correct !`, 404));
+//     }
+//   }
+//   if (!userdata) {
+//     return next(new ApiErrors("This account is not exist", 404));
+//   }
+// });
 
 exports.login = asyncHandler(async (req, res, next) => {
   const { password, Appversion, deviceId, deviceName, fcmToken, lang } = req.body;
 
-  if (!password)
-    return next(new ApiErrors("Password is required!", 400));
+  if (!password) return next(new ApiErrors("Password is required!", 400));
+  if (!deviceId || !deviceName) return next(new ApiErrors("Device info is required!", 400));
 
-  if (!deviceId || !deviceName)
-    return next(new ApiErrors("Device info is required!", 400));
-
-  // 1️⃣ سجل الجهاز
+  // 1️⃣ سجل الفشل للجهاز
   let record = await FailedLoginModel.findOne({ deviceId, deviceName });
 
+  // 2️⃣ فحص الحظر
   if (record?.isBlocked)
     return next(new ApiErrors("هذا الجهاز محظور بشكل دائم، راجع الإدارة", 403));
 
-  // 2️⃣ البحث عن المستخدم (نفس القديم)
-  const userdata = await UserModel.findOne({ password });
+  // 3️⃣ البحث عن المستخدم
+  const user = await UserModel.findOne({ password });
 
-  if (!userdata) {
-    if (!record) {
-      record = new FailedLoginModel({ deviceId, deviceName, attempts: 1 });
-    } else {
-      record.attempts += 1;
-    }
+  // 4️⃣ المستخدم مش موجود → تسجيل محاولة فشل
+  if (!user) {
+    if (!record) record = new FailedLoginModel({ deviceId, deviceName, attempts: 1 });
+    else record.attempts += 1;
 
     if (record.attempts >= 5) {
       record.isBlocked = true;
@@ -49,33 +81,45 @@ exports.login = asyncHandler(async (req, res, next) => {
     return next(new ApiErrors("This account does not exist", 404));
   }
 
-  if (!userdata.isVerified)
+  // 5️⃣ المستخدم موجود لكن غير مفعل
+  if (!user.isVerified)
     return next(new ApiErrors("Your account is not active!", 401));
 
-  // 3️⃣ تحقق هل الجهاز موجود
-  const existingDevice = userdata.devicelogin.find(
-    d => d.deviceId === deviceId
-  );
+  // 6️⃣ تحقق الباسورد
+  const isMatch = password === user.password;
+  if (!isMatch) {
+    if (!record) record = new FailedLoginModel({ deviceId, deviceName, attempts: 1 });
+    else record.attempts += 1;
 
-  // 🔐 جهاز جديد → OTP
+    if (record.attempts >= 5) {
+      record.isBlocked = true;
+      record.attempts = 0;
+    }
+
+    await record.save();
+    return next(new ApiErrors("The password is not correct!", 404));
+  }
+
+  // 7️⃣ حذف سجل الفشل عند نجاح الدخول
+  if (record && !record.isBlocked) {
+    await FailedLoginModel.deleteOne({ deviceId, deviceName });
+  }
+
+  // 8️⃣ تحقق هل الجهاز موجود
+  const existingDevice = user.devicelogin.find(d => d.deviceId === deviceId);
+
   if (!existingDevice) {
-
-    // limit 2 devices (اختياري)
-    if (userdata.devicelogin.length >= 2)
-      return next(new ApiErrors("Device limit reached", 403));
-
-    if (!userdata.email)
-      return next(new ApiErrors("Please add email first", 400));
+    // 🔐 جهاز جديد → OTP
+    if (!user.email || !user.email.includes('@'))
+      return res.status(200).json({ status: "email_required", message: "Please add your email first" });
 
     const code = Math.floor(100000 + Math.random() * 900000);
+    user.verfiycode = code;
+    user.verifyCodeExpires = Date.now() + 5 * 60 * 1000;
+    await user.save();
 
-    userdata.verfiycode = code;
-    userdata.verifyCodeExpires = Date.now() + 5 * 60 * 1000;
-
-    await userdata.save();
-
-    await sendOTPConfirmEmail(
-      userdata.email,
+    await sendOTPDConfirmEmail(
+      user.email,
       code,
       "New Device Login",
       "Use this code to confirm login:"
@@ -87,26 +131,20 @@ exports.login = asyncHandler(async (req, res, next) => {
     });
   }
 
-  // 4️⃣ نجاح الدخول (جهاز معروف)
+  // 9️⃣ تحديث بيانات الدخول
+  user.lastLogin = Date.now();
+  user.isOnline = true;
+  user.Appversion = Appversion;
+  user.fcmToken = fcmToken;
+  user.lang = lang;
+  await user.save();
 
-  // حذف سجل الفشل
-  if (record && !record.isBlocked) {
-    await FailedLoginModel.deleteOne({ deviceId, deviceName });
-  }
-
-  // تحديث بيانات الدخول
-  userdata.lastLogin = Date.now();
-  userdata.isOnline = true;
-  userdata.Appversion = Appversion;
-  userdata.fcmToken = fcmToken;
-  userdata.lang = lang;
-
-  await userdata.save();
-
-  const token = await createToken(userdata._id);
+  // 10️⃣ إنشاء التوكن
+  const token = await createToken(user._id);
 
   res.status(200).json({
     message: "Login successfully!",
+    data: user,
     status: 200,
     token
   });
@@ -166,7 +204,9 @@ exports.verifyOTP = asyncHandler(async (req, res) => {
   res.json({ status: "success", token });
 });
 
-/////*-----------------------*/////
+
+
+
 
 //protect
 exports.protect = asyncHandler(async (req, res, next) => {
