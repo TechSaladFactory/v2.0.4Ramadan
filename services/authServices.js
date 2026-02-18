@@ -198,10 +198,11 @@ exports.confirmsetEmail = asyncHandler(async (req, res) => {
   res.json({ status: "email_verified", email: user.email });
 });
 
-exports.verifyOTP = asyncHandler(async (req, res) => {
-  const { email, code, deviceId, deviceName } = req.body;
 
-  const user = await UserModel.findOne({ email });
+exports.verifyOTP = asyncHandler(async (req, res) => {
+  const { password, code, deviceId, deviceName } = req.body;
+
+  const user = await UserModel.findOne({ password: password });
 
   if (!user)
     return res.status(404).json({ message: "User not found" });
@@ -231,7 +232,6 @@ exports.verifyOTP = asyncHandler(async (req, res) => {
 
   res.json({ status: "success", token });
 });
-
 
 
 
