@@ -20,7 +20,7 @@ const {
   getuserBranchOS,
   getuserBranchtawalf,
   getuserBranchRezoCaher,sendEmailOTP,verifyEmailOTP,
-    addEmail,verifyOTP
+    addEmail,verifyOTP,confirmsetEmail
 } = require("../services/authServices");
 
 const {
@@ -41,6 +41,7 @@ router.route("/user").get(getuserValidators, getuser);
 
 router.route("/add-email").post(addEmail);
 router.route("/verifydevice-otp").post(verifyOTP);
+router.route("/confirm-email").post(confirmsetEmail);
 
 // router.route("/signup").post(upload.single("profileImage"), signUpValidators, signUp);
 router.route("/user/BranchOP").get( getuserBranchOP);
