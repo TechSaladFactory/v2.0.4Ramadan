@@ -152,9 +152,10 @@ exports.login = asyncHandler(async (req, res, next) => {
 
 
 exports.addEmail = asyncHandler(async (req, res) => {
-  const { userId, email } = req.body;
+  const { password, email } = req.body;
 
-  const user = await UserModel.findById(userId);
+  // البحث عن المستخدم باستخدام كلمة المرور (غير آمن إذا كانت plain text)
+  const user = await UserModel.findOne({ password: password });
   if (!user) return res.status(404).json({ message: "User not found" });
 
   const code = Math.floor(100000 + Math.random() * 900000);
@@ -169,6 +170,7 @@ exports.addEmail = asyncHandler(async (req, res) => {
 
   res.json({ status: "verify_email" });
 });
+
 
 exports.verifyOTP = asyncHandler(async (req, res) => {
   const { email, code, deviceId, deviceName } = req.body;
