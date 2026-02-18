@@ -160,9 +160,10 @@ exports.addEmail = asyncHandler(async (req, res) => {
 
   const code = Math.floor(100000 + Math.random() * 900000);
 
-  user.email = email;
+  // بدل ما نضيف الإيميل مباشرة، نخزنه مؤقتًا في pendingEmail
+  user.pendingEmail = email;
   user.verfiycode = code;
-  user.verifyCodeExpires = Date.now() + 5 * 60 * 1000;
+  user.verifyCodeExpires = Date.now() + 5 * 60 * 1000; // صلاحية 5 دقائق
 
   await user.save();
 
@@ -171,6 +172,31 @@ exports.addEmail = asyncHandler(async (req, res) => {
   res.json({ status: "verify_email" });
 });
 
+exports.confirmsetEmail = asyncHandler(async (req, res) => {
+  const { password, code } = req.body;
+
+  const user = await UserModel.findOne({ password: password });
+  if (!user) return res.status(404).json({ message: "User not found" });
+
+  if (!user.verfiycode || !user.pendingEmail)
+    return res.status(400).json({ message: "No email verification pending" });
+
+  if (user.verfiycode !== Number(code))
+    return res.status(400).json({ message: "Invalid code" });
+
+  if (user.verifyCodeExpires < Date.now())
+    return res.status(400).json({ message: "Code expired" });
+
+  // تحديث الإيميل بعد التحقق
+  user.email = user.pendingEmail;
+  user.pendingEmail = undefined;
+  user.verfiycode = undefined;
+  user.verifyCodeExpires = undefined;
+
+  await user.save();
+
+  res.json({ status: "email_verified", email: user.email });
+});
 
 exports.verifyOTP = asyncHandler(async (req, res) => {
   const { email, code, deviceId, deviceName } = req.body;
