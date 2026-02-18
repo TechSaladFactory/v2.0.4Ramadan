@@ -14,7 +14,13 @@ const userSchema = new mongoose.Schema(
   trim: true,
   unique: true,
   sparse: true
-},
+}, pendingEmail : {
+    type: String,
+    lowercase: true,
+    trim: true,
+     unique: true,
+     sparse: true
+  },
 
     slug: {
       type: String,
