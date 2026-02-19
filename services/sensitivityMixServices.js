@@ -1,6 +1,6 @@
 const asyncHandler = require("express-async-handler");
 const { SensitivityMixModel } = require("../models/sensitivityMixModel");
-const ApiErrors = require("../utils/ApiErrors"); // تأكد يكون عندك ملف ApiErrors
+const ApiErrors = require("../utils/apiErrors"); // تأكد يكون عندك ملف ApiErrors
 
 // GET ALL SensitivityMix مع pagination
 exports.getAllSensitivityMix = asyncHandler(async (req, res) => {
