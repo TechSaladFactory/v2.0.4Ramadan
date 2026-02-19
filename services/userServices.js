@@ -172,16 +172,24 @@ async function sendOTPConfirmEmail(toEmail, code) {
 exports.getUser = asyncHandler(async (req, res) => {
   const page = req.query.page ? parseInt(req.query.page) : null;
   const limit = req.query.limit ? parseInt(req.query.limit) : null;
+  const keyword = req.query.keyword ? req.query.keyword.trim() : null;
 
-  const total = await UserModel.countDocuments();
+  // فلتر البحث
+  let filter = {};
 
-  let query = UserModel.find({})
-    .populate({
-      path: "department",
-      select: "name",
-    });
+  if (keyword) {
+    filter.name = { $regex: keyword, $options: "i" }; 
+    // i = case insensitive
+  }
 
-  // لو المستخدم باعت page و limit نعمل pagination
+  const total = await UserModel.countDocuments(filter);
+
+  let query = UserModel.find(filter).populate({
+    path: "department",
+    select: "name",
+  });
+
+  // Pagination
   if (page && limit) {
     const skip = (page - 1) * limit;
     query = query.skip(skip).limit(limit);
