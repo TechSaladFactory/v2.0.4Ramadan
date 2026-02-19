@@ -48,6 +48,8 @@ const categoryRoutes =require("./routes/categoryRoutes");
 const app = express();
 const basepathApi = "/api";
 
+const sensitivityMixRoutes =require("./routes/sensitivityMixRoutes");
+
 //Mode Connections
 if (process.env.NODE_ENV === "development") {
   app.use(morgan("dev"));
@@ -98,6 +100,10 @@ app.use(`${basepathApi}/misson`,missionRoutes)
 app.use(`${basepathApi}/walaaHistory`,walaaHistoryRoutes)
 app.use(`${basepathApi}/rewards`,rewardsRoutes)
 app.use(`${basepathApi}/category`,categoryRoutes)
+
+app.use(`${basepathApi}/sensitivityMix`,sensitivityMixRoutes)
+
+
 // errors
 app.all("*", (req, res, next) => {
   next(new ApiErrors(`Can't found the url ${req.originalUrl}`, 400));
