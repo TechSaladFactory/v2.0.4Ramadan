@@ -289,14 +289,32 @@ exports.updateWalaaHistory = asyncHandler(async (req, res, next) => {
 
 /* ================== GETTERS ================== */
 exports.getAllWalaaHistory = asyncHandler(async (req, res) => {
-  const data = await walaaHistoryModel
+
+  const WalaaData = await walaaHistoryModel
     .find({})
     .populate("userId", "name")
-    .sort({ createdAt: -1 });
+    .sort({ collect: 1, createdAt: -1 });
 
-  res.status(200).json({ status: 200, results: data.length, data });
+  const populatedData = await Promise.all(
+    WalaaData.map(async (history) => {
+      if (mongoose.isValidObjectId(history.title)) {
+        history = await history.populate({
+          path: "title",
+          model: "Rewards",
+          select: "title points",
+        });
+      }
+      return history;
+    })
+  );
+
+  res.status(200).json({
+    status: 200,
+    data: populatedData,
+    number: populatedData.length
+  });
+
 });
-
 
 exports.userWalaaHistory = asyncHandler(async (req, res, next) => {
 
