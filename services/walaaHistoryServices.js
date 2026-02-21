@@ -908,7 +908,7 @@ exports.approveWalaaHistory = asyncHandler(async (req, res, next) => {
 
 
 
-exports.getAllWalaapendinngGivenPoint = asyncHandler(async (req, res, next) => {
+exports.getAllWalaaPendingGivenPoint = asyncHandler(async (req, res, next) => {
   const walaaData = await walaaHistoryModel
     .find({ place: "p" }) // هنا تم تغيير المكان من "h" إلى "r"
     .populate("userId", "name")
