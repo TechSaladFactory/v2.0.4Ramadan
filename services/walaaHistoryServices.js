@@ -841,7 +841,7 @@ exports.approveWalaaHistory = asyncHandler(async (req, res, next) => {
   await walaaHistory.save();
 // تحديث نقاط المستخدم
 if (isDeduction) {
-  user.currentpoints += Math.abs(points);
+  user.currentpoints -= Math.abs(points);
 } else {
 }
 await user.save(); // مهم نحفظ التغييرات
