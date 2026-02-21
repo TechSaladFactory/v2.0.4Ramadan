@@ -51,7 +51,7 @@ const WalaaHistorySchema = new mongoose.Schema({
 
   place: {
     type: String,
-    enum: ["h", "r"],
+    // enum: ["h", "r"],
     default: "r",
   },
 
