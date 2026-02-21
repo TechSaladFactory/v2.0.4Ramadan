@@ -67,7 +67,10 @@ const WalaaHistorySchema = new mongoose.Schema({
     default: () =>
       `${Math.floor(100000 + Math.random() * 900000)}`
 ,
-  },
+  },approved:{
+  type:Boolean,
+  default:false
+}
 }, { timestamps: true });
 
 module.exports = mongoose.model("WalaaHistory", WalaaHistorySchema);
