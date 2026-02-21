@@ -575,6 +575,7 @@ exports.acceptRedeem = asyncHandler(async (req, res, next) => {
 
 exports.getUserHistory = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
+  const { places } = req.query; // نستقبل القيم من الـ query
 
   if (!id) {
     return res.status(400).json({
@@ -583,8 +584,14 @@ exports.getUserHistory = asyncHandler(async (req, res, next) => {
     });
   }
 
+  // نحول القيم المرسلة من query إلى مصفوفة، أو نستخدم ["r","h"] كافتراضي
+  const placeFilter = places ? places.split(",") : ["r", "h"];
+
   const WalaaData = await walaaHistoryModel
-    .find({ userId: id })
+    .find({ 
+      userId: id,
+      place: { $in: placeFilter }
+    })
     .populate("userId", "name")
     .sort({ collect: 1, createdAt: -1 });
 
@@ -607,7 +614,6 @@ exports.getUserHistory = asyncHandler(async (req, res, next) => {
     data: populatedData,
   });
 });
-
 
 
 exports.deleteWalaaHistoryPoints = asyncHandler(async (req, res, next) => {
