@@ -65,9 +65,8 @@ exports.createWalaaHistory = asyncHandler(async (req, res, next) => {
 });
 
 /* ================== SET POINTS ================== */
-
 exports.setPointsWalaaHistory = asyncHandler(async (req, res, next) => {
-  const { title, status, reason, points, rate, place, userId, approved } = req.body;
+  let { title, status, reason, points, rate, place, userId, approved } = req.body;
 
   const user = await UserModel.findById(userId);
   if (!user) return next(new ApiErrors("User not found", 404));
@@ -76,7 +75,12 @@ exports.setPointsWalaaHistory = asyncHandler(async (req, res, next) => {
   const isDeduction = points < 0;
 
   /** =========================
-   * إنشاء السجل بالحالة
+   * تعيين place حسب الاعتماد
+   ========================= */
+  place = approved === true ? place || "r" : "p";
+
+  /** =========================
+   * إنشاء السجل
    ========================= */
   const walaaHistory = await walaaHistoryModel.create({
     title,
@@ -91,7 +95,7 @@ exports.setPointsWalaaHistory = asyncHandler(async (req, res, next) => {
   });
 
   /** =========================
-   * لو غير معتمد → لا تنفيذ
+   * لو غير معتمد → لا تنفيذ النقاط ولا إشعار
    ========================= */
   if (approved !== true) {
     return res.status(200).json({
@@ -103,12 +107,13 @@ exports.setPointsWalaaHistory = asyncHandler(async (req, res, next) => {
   }
 
   /** =========================
-   * تنفيذ العملية
+   * تنفيذ العملية فورًا
    ========================= */
   if (isDeduction) {
     user.currentpoints = Math.max(0, user.currentpoints + points);
   } else {
     user.currentpoints += points;
+    // user.pointsRLevel += points; // لو حابب تفعلها
   }
 
   await user.save();
@@ -128,6 +133,9 @@ exports.setPointsWalaaHistory = asyncHandler(async (req, res, next) => {
         ? `لقد تم إضافة ${points} نقطة إلى حسابك!`
         : `You have received ${points} points!`);
 
+  /** =========================
+   * إرسال الإشعار
+   ========================= */
   if (user.fcmToken) {
     try {
       await sendNotification(
