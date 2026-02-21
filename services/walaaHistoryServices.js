@@ -110,7 +110,7 @@ exports.setPointsWalaaHistory = asyncHandler(async (req, res, next) => {
    * تنفيذ العملية فورًا
    ========================= */
   if (isDeduction) {
-    user.currentpoints = Math.max(0, user.currentpoints + points);
+    // user.currentpoints = Math.max(0, user.currentpoints + points);
   } else {
     // user.currentpoints += points;
     // user.pointsRLevel += points; // لو حابب تفعلها
