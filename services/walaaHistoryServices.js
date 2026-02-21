@@ -801,3 +801,88 @@ exports.getUserHistoryucollected = asyncHandler(async (req, res, next) => {
     data,
   });
 });
+
+
+
+exports.approveWalaaHistory = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+
+  const walaaHistory = await walaaHistoryModel.findById(id);
+  if (!walaaHistory) {
+    return next(new ApiErrors("Walaa history not found", 404));
+  }
+
+  // 🔒 منع الاعتماد مرتين
+  if (walaaHistory.approved === true) {
+    return next(new ApiErrors("Operation already approved", 400));
+  }
+
+  const user = await UserModel.findById(walaaHistory.userId);
+  if (!user) {
+    return next(new ApiErrors("User not found", 404));
+  }
+
+  const points = walaaHistory.points;
+  const isDeduction = points < 0;
+  const lang = user.lang;
+
+  /** =========================
+   * تنفيذ العملية
+   ========================= */
+  if (isDeduction) {
+    user.currentpoints = Math.max(0, user.currentpoints + points);
+  } else {
+    user.currentpoints += points;
+  }
+
+  await user.save();
+
+  /** =========================
+   * تحديث الحالة
+   ========================= */
+  walaaHistory.approved = true;
+  await walaaHistory.save();
+
+  /** =========================
+   * تجهيز الإشعار
+   ========================= */
+  const notificationTitle = isDeduction
+    ? (lang === 'ar' ? "تم خصم النقاط" : "Points Deducted")
+    : (lang === 'ar' ? "تم إضافة النقاط" : "Points Added");
+
+  const notificationBody = isDeduction
+    ? (lang === 'ar'
+        ? `${Math.abs(points)} نقطة تم خصمها من حسابك`
+        : `${Math.abs(points)} points have been deducted from your account`)
+    : (lang === 'ar'
+        ? `لقد تم إضافة ${points} نقطة إلى حسابك!`
+        : `You have received ${points} points!`);
+
+  if (user.fcmToken) {
+    try {
+      await sendNotification(
+        user.fcmToken,
+        notificationTitle,
+        lang === 'ar'
+          ? `${user.name}, ${notificationBody}`
+          : `${user.slug}, ${notificationBody}`,
+        {
+          type: isDeduction ? 'points_deducted' : 'points_added',
+          walaaId: walaaHistory._id.toString(),
+          points: points.toString(),
+          currentPoints: user.currentpoints.toString()
+        },
+        lang
+      );
+    } catch (err) {
+      console.warn("Notification failed:", err.message);
+    }
+  }
+
+  return res.status(200).json({
+    status: 200,
+    message: "Operation approved successfully",
+    currentPoints: user.currentpoints,
+    data: walaaHistory
+  });
+});
