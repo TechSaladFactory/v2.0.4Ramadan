@@ -839,7 +839,12 @@ exports.approveWalaaHistory = asyncHandler(async (req, res, next) => {
   walaaHistory.approved = true;
   walaaHistory.place = "h"; // عند الاعتماد تتحول إلى "r"
   await walaaHistory.save();
-
+// تحديث نقاط المستخدم
+if (isDeduction) {
+  user.currentpoints += Math.abs(points);
+} else {
+}
+await user.save(); // مهم نحفظ التغييرات
   // إعداد الإشعار
   const notificationTitle = isDeduction
     ? (lang === 'ar' ? "تم خصم النقاط" : "Points Deducted")
