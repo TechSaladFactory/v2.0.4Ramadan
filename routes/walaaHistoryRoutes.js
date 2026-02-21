@@ -19,7 +19,7 @@ approveWalaaHistory,
 getUserHistory  ,
 getUserHistoryucollected,
 getWalaaPointsSummary,
-  
+  getAllWalaaPendingGivenPoint,
 deleteWalaaHistoryPoints
   
 } = require("../services/walaaHistoryServices");
@@ -45,7 +45,7 @@ router.route("/userWHistoryById/:id").get(getUserHistory)
 router.route("/deleteWalaaHistoryPoints/:id").delete(deleteWalaaHistoryPoints)
 
 router.route("/:id").put(updateWalaaHistory).delete(deleteWalaaHistory)
-router.get("/walaa/points/pending", getAllWalaaPendingGivenPoint);
+router.get("/pointspending", getAllWalaaPendingGivenPoint);
 router.route("/getUserHistoryucollected").get(getUserHistoryucollected)
 router.patch("/approve-walaa/:id", approveWalaaHistory);
 
