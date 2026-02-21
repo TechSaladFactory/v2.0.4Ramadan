@@ -350,13 +350,19 @@ exports.userWalaaHistory = asyncHandler(async (req, res, next) => {
   try {
     decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
   } catch (err) {
-    console.log(err)
+    console.log(err);
     return next(new ApiErrors("Invalid or expired token!", 401));
   }
 
+  // جلب قيم place من query لو موجودة، أو ["r","h"] كافتراضي
+  const { places } = req.query;
+  const placeFilter = places ? places.split(",") : ["r", "h"];
+
   const WalaaData = await walaaHistoryModel.find({
-    userId: decoded.id
-  }).populate("userId", "name")
+    userId: decoded.id,
+    place: { $in: placeFilter }
+  })
+    .populate("userId", "name")
     .sort({ collect: 1, createdAt: -1 });
 
   const populatedData = await Promise.all(
@@ -370,14 +376,15 @@ exports.userWalaaHistory = asyncHandler(async (req, res, next) => {
       }
       return history;
     })
-  ); res.status(200).json({
+  );
+
+  res.status(200).json({
     status: 200,
     data: populatedData,
     number: populatedData.length
-  })
+  });
 
-
-})
+});
 
 /* ================== DELETE ================== */
 exports.deleteWalaaHistory = asyncHandler(async (req, res, next) => {
