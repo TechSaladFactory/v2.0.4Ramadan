@@ -47,6 +47,6 @@ router.route("/deleteWalaaHistoryPoints/:id").delete(deleteWalaaHistoryPoints)
 router.route("/:id").put(updateWalaaHistory).delete(deleteWalaaHistory)
 
 router.route("/getUserHistoryucollected").get(getUserHistoryucollected)
-
+router.patch("/approve-walaa/:id", approveWalaaHistory);
 
 module.exports = router;
