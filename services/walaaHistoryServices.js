@@ -66,15 +66,56 @@ exports.createWalaaHistory = asyncHandler(async (req, res, next) => {
 
 /* ================== SET POINTS ================== */
 
-
 exports.setPointsWalaaHistory = asyncHandler(async (req, res, next) => {
-  const { title, status, reason, points, rate, place, userId } = req.body;
+  const { title, status, reason, points, rate, place, userId, approved } = req.body;
 
-
-  const isDeduction = points < 0;
   const user = await UserModel.findById(userId);
-  const lang =user.lang;
+  if (!user) return next(new ApiErrors("User not found", 404));
 
+  const lang = user.lang;
+  const isDeduction = points < 0;
+
+  /** =========================
+   * إنشاء السجل بالحالة
+   ========================= */
+  const walaaHistory = await walaaHistoryModel.create({
+    title,
+    status,
+    place,
+    reason,
+    points,
+    rate,
+    collect: isDeduction,
+    userId,
+    approved: approved === true
+  });
+
+  /** =========================
+   * لو غير معتمد → لا تنفيذ
+   ========================= */
+  if (approved !== true) {
+    return res.status(200).json({
+      status: 200,
+      message: "Operation saved but waiting for approval",
+      data: walaaHistory,
+      currentPoints: user.currentpoints
+    });
+  }
+
+  /** =========================
+   * تنفيذ العملية
+   ========================= */
+  if (isDeduction) {
+    user.currentpoints = Math.max(0, user.currentpoints + points);
+  } else {
+    user.currentpoints += points;
+  }
+
+  await user.save();
+
+  /** =========================
+   * تجهيز الإشعار
+   ========================= */
   const notificationTitle = isDeduction
     ? (lang === 'ar' ? "تم خصم النقاط" : "Points Deducted")
     : (lang === 'ar' ? "تم إضافة النقاط" : "Points Added");
@@ -87,43 +128,14 @@ exports.setPointsWalaaHistory = asyncHandler(async (req, res, next) => {
         ? `لقد تم إضافة ${points} نقطة إلى حسابك!`
         : `You have received ${points} points!`);
 
-  if (!user) return next(new ApiErrors("User not found", 404));
-
-  /** =========================
-   * تحديث النقاط
-   ========================= */
-  if (isDeduction) {
-    user.currentpoints = Math.max(0, user.currentpoints + points);
-  } else {
-    // user.currentpoints += points;
-    // user.pointsRLevel += points;
-  }
-
-  await user.save();
-
-  /** =========================
-   * إنشاء السجل
-   ========================= */
-  const walaaHistory = await walaaHistoryModel.create({
-    title,
-    status,
-    place,
-    reason,
-    points,
-    rate,
-    collect: isDeduction,
-    userId
-  });
-
-  /** =========================
-   * إرسال الإشعار
-   ========================= */
   if (user.fcmToken) {
     try {
       await sendNotification(
         user.fcmToken,
         notificationTitle,
-      lang === 'ar' ? (user.name + ", " + notificationBody) : (user.slug + ", " + notificationBody),
+        lang === 'ar'
+          ? `${user.name}, ${notificationBody}`
+          : `${user.slug}, ${notificationBody}`,
         {
           type: isDeduction ? 'points_deducted' : 'points_added',
           walaaId: walaaHistory._id.toString(),
@@ -143,7 +155,6 @@ exports.setPointsWalaaHistory = asyncHandler(async (req, res, next) => {
     currentPoints: user.currentpoints
   });
 });
-
 
 /* ================== REDEEM ================== */
 exports.makeRedeem = asyncHandler(async (req, res, next) => {
