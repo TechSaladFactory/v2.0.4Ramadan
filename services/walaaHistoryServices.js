@@ -903,3 +903,33 @@ exports.approveWalaaHistory = asyncHandler(async (req, res, next) => {
     data: walaaHistory
   });
 });
+
+
+
+
+
+exports.getAllWalaapendinngGivenPoint = asyncHandler(async (req, res, next) => {
+  const walaaData = await walaaHistoryModel
+    .find({ place: "p" }) // هنا تم تغيير المكان من "h" إلى "r"
+    .populate("userId", "name")
+    .sort({ collect: 1, createdAt: -1 });
+
+  const populatedData = await Promise.all(
+    walaaData.map(async (history) => {
+      if (mongoose.Types.ObjectId.isValid(history.title)) {
+        await history.populate({
+          path: "title",
+          model: "Rewards",
+          select: "title points",
+        });
+      }
+      return history;
+    })
+  );
+
+  res.status(200).json({
+    status: 200,
+    results: populatedData.length,
+    data: populatedData,
+  });
+});
