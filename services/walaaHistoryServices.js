@@ -74,7 +74,7 @@ exports.setPointsWalaaHistory = asyncHandler(async (req, res, next) => {
   if (!user) return next(new ApiErrors("User not found", 404));
 
   const lang = user.lang;
-  const isDeduction = points < 0;
+  const isDeduction = points < 0; // فقط الخصم يُنفذ
 
   /** =========================
    * تعيين place حسب الاعتماد
@@ -109,42 +109,29 @@ exports.setPointsWalaaHistory = asyncHandler(async (req, res, next) => {
   }
 
   /** =========================
-   * لو تم الاعتماد → تحديث النقاط
+   * لو تم الاعتماد → خصم النقاط فقط
    ========================= */
-  const notificationTitle = isDeduction
-    ? (lang === 'ar' ? "تم خصم النقاط" : "Points Deducted")
-    : (lang === 'ar' ? "تم إضافة النقاط" : "Points Added");
-
-  const notificationBody = isDeduction
-    ? (lang === 'ar'
-        ? `${Math.abs(points)} نقطة تم خصمها من حسابك`
-        : `${Math.abs(points)} points have been deducted from your account`)
-    : (lang === 'ar'
-        ? `لقد تم إضافة ${points} نقطة إلى حسابك!`
-        : `You have received ${points} points!`);
-
-  // تحديث النقاط
   if (isDeduction) {
-    user.currentpoints = Math.max(0, user.currentpoints + points);
-  } else {
-    user.currentpoints += points;
-    // لو عندك pointsRLevel يمكن تفعيله هنا
-    // user.pointsRLevel += points;
+    user.currentpoints = Math.max(0, user.currentpoints + points); // points سالبة → ينقص
+    await user.save();
   }
 
-  await user.save();
-
   /** =========================
-   * إرسال الإشعار
+   * إرسال الإشعار (فقط لو الخصم) 
    ========================= */
-  if (user.fcmToken) {
+  if (isDeduction && user.fcmToken) {
+    const notificationTitle = lang === 'ar' ? "تم خصم النقاط" : "Points Deducted";
+    const notificationBody = lang === 'ar'
+      ? `${Math.abs(points)} نقطة تم خصمها من حسابك`
+      : `${Math.abs(points)} points have been deducted from your account`;
+
     try {
       await sendNotification(
         user.fcmToken,
         notificationTitle,
         lang === 'ar' ? (user.name + ", " + notificationBody) : (user.slug + ", " + notificationBody),
         {
-          type: isDeduction ? 'points_deducted' : 'points_added',
+          type: 'points_deducted',
           walaaId: walaaHistory._id.toString(),
           points: points.toString(),
           currentPoints: user.currentpoints.toString()
@@ -158,7 +145,7 @@ exports.setPointsWalaaHistory = asyncHandler(async (req, res, next) => {
 
   return res.status(200).json({
     status: 200,
-    message: "Points updated and operation approved",
+    message: isDeduction ? "Points deducted and operation approved" : "Operation approved (no points added)",
     data: walaaHistory,
     currentPoints: user.currentpoints
   });
