@@ -811,48 +811,46 @@ exports.getUserHistoryucollected = asyncHandler(async (req, res, next) => {
 });
 
 
-
 exports.approveWalaaHistory = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
 
+  // جلب سجل العملية
   const walaaHistory = await walaaHistoryModel.findById(id);
-  if (!walaaHistory) {
-    return next(new ApiErrors("Walaa history not found", 404));
-  }
+  if (!walaaHistory) return next(new ApiErrors("Walaa history not found", 404));
 
-  // 🔒 منع الاعتماد مرتين
+  // منع اعتماد مرتين
   if (walaaHistory.approved === true) {
     return next(new ApiErrors("Operation already approved", 400));
   }
 
   const user = await UserModel.findById(walaaHistory.userId);
-  if (!user) {
-    return next(new ApiErrors("User not found", 404));
-  }
+  if (!user) return next(new ApiErrors("User not found", 404));
 
   const points = walaaHistory.points;
   const isDeduction = points < 0;
   const lang = user.lang;
 
   /** =========================
-   * تنفيذ العملية
+   * تنفيذ تعديل النقاط
    ========================= */
   if (isDeduction) {
     user.currentpoints = Math.max(0, user.currentpoints + points);
   } else {
     user.currentpoints += points;
+    // user.pointsRLevel += points; // لو حابب تفعلها
   }
 
   await user.save();
 
   /** =========================
-   * تحديث الحالة
+   * تحديث حالة الاعتماد و place
    ========================= */
   walaaHistory.approved = true;
+  walaaHistory.place = "r";  // عند الاعتماد تتحول إلى "r"
   await walaaHistory.save();
 
   /** =========================
-   * تجهيز الإشعار
+   * إرسال الإشعار بدون اسم المستخدم
    ========================= */
   const notificationTitle = isDeduction
     ? (lang === 'ar' ? "تم خصم النقاط" : "Points Deducted")
@@ -871,9 +869,7 @@ exports.approveWalaaHistory = asyncHandler(async (req, res, next) => {
       await sendNotification(
         user.fcmToken,
         notificationTitle,
-        lang === 'ar'
-          ? `${user.name}, ${notificationBody}`
-          : `${user.slug}, ${notificationBody}`,
+        notificationBody, // هنا بدون اسم المستخدم
         {
           type: isDeduction ? 'points_deducted' : 'points_added',
           walaaId: walaaHistory._id.toString(),
