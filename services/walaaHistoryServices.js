@@ -846,7 +846,7 @@ exports.approveWalaaHistory = asyncHandler(async (req, res, next) => {
    * تحديث حالة الاعتماد و place
    ========================= */
   walaaHistory.approved = true;
-  walaaHistory.place = "r";  // عند الاعتماد تتحول إلى "r"
+  walaaHistory.place = "h";  // عند الاعتماد تتحول إلى "r"
   await walaaHistory.save();
 
   /** =========================
