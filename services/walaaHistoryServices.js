@@ -824,6 +824,8 @@ exports.getUserHistoryucollected = asyncHandler(async (req, res, next) => {
 });
 
 
+
+
 exports.approveWalaaHistory = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
 
@@ -832,10 +834,11 @@ exports.approveWalaaHistory = asyncHandler(async (req, res, next) => {
   if (!walaaHistory) return next(new ApiErrors("Walaa history not found", 404));
 
   // منع اعتماد مرتين
-  if (walaaHistory.approved === true) {
+  if (walaaHistory.approved) {
     return next(new ApiErrors("Operation already approved", 400));
   }
 
+  // جلب المستخدم
   const user = await UserModel.findById(walaaHistory.userId);
   if (!user) return next(new ApiErrors("User not found", 404));
 
@@ -843,28 +846,19 @@ exports.approveWalaaHistory = asyncHandler(async (req, res, next) => {
   const isDeduction = points < 0;
   const lang = user.lang;
 
-  /** =========================
-   * تنفيذ تعديل النقاط
-   ========================= */
-  if (isDeduction) {
-    user.currentpoints = Math.max(0, user.currentpoints + points);
-  } else {
-    user.currentpoints += points;
-    // user.pointsRLevel += points; // لو حابب تفعلها
-  }
+  // تعديل النقاط
+  user.currentpoints = isDeduction
+    ? Math.max(0, user.currentpoints + points)
+    : user.currentpoints + points;
 
   await user.save();
 
-  /** =========================
-   * تحديث حالة الاعتماد و place
-   ========================= */
+  // تحديث حالة الاعتماد و place
   walaaHistory.approved = true;
-  walaaHistory.place = "h";  // عند الاعتماد تتحول إلى "r"
+  walaaHistory.place = "h"; // عند الاعتماد تتحول إلى "r"
   await walaaHistory.save();
 
-  /** =========================
-   * إرسال الإشعار بدون اسم المستخدم
-   ========================= */
+  // إعداد الإشعار
   const notificationTitle = isDeduction
     ? (lang === 'ar' ? "تم خصم النقاط" : "Points Deducted")
     : (lang === 'ar' ? "تم إضافة النقاط" : "Points Added");
@@ -877,12 +871,13 @@ exports.approveWalaaHistory = asyncHandler(async (req, res, next) => {
         ? `لقد تم إضافة ${points} نقطة إلى حسابك!`
         : `You have received ${points} points!`);
 
+  // إرسال الإشعار
   if (user.fcmToken) {
     try {
       await sendNotification(
         user.fcmToken,
         notificationTitle,
-        notificationBody, // هنا بدون اسم المستخدم
+        notificationBody,
         {
           type: isDeduction ? 'points_deducted' : 'points_added',
           walaaId: walaaHistory._id.toString(),
@@ -896,6 +891,7 @@ exports.approveWalaaHistory = asyncHandler(async (req, res, next) => {
     }
   }
 
+  // الرد النهائي
   return res.status(200).json({
     status: 200,
     message: "Operation approved successfully",
@@ -903,9 +899,6 @@ exports.approveWalaaHistory = asyncHandler(async (req, res, next) => {
     data: walaaHistory
   });
 });
-
-
-
 
 
 exports.getAllWalaaPendingGivenPoint = asyncHandler(async (req, res, next) => {
