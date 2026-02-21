@@ -15,7 +15,7 @@ getAllWalaaHistoryPending,
 setPointsWalaaHistory,
 getAllWalaaGivenPoint,
 acceptRedeem,
-
+approveWalaaHistory,
 getUserHistory  ,
 getUserHistoryucollected,
 getWalaaPointsSummary,
