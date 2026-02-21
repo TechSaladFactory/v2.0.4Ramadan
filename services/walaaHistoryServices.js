@@ -846,13 +846,7 @@ exports.approveWalaaHistory = asyncHandler(async (req, res, next) => {
   const isDeduction = points < 0;
   const lang = user.lang;
 
-  // تعديل النقاط
-  user.currentpoints = isDeduction
-    ? Math.max(0, user.currentpoints + points)
-    : user.currentpoints + points;
-
-  await user.save();
-
+ 
   // تحديث حالة الاعتماد و place
   walaaHistory.approved = true;
   walaaHistory.place = "h"; // عند الاعتماد تتحول إلى "r"
